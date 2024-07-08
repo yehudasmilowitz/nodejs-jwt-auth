@@ -1,13 +1,31 @@
-GET http://localhost:4000/posts
-Authorization: Bearer 123123123
+GET http://localhost:3000/posts
+Authorization: Bearer **accessToken**
 ###
 
-GET http://localhost:3000/users
+GET http://localhost:4000/token
+Content-Type: application/json
+
+{
+    "token": "**refreshToken**"
+}
+###
+
+DELETE http://localhost:4000/logout
+Content-Type: application/json
+
+{
+    "token": "**refreshToken**"
+}
 
 
 ###
 
-POST http://localhost:3000/users
+GET http://localhost:4000/users
+
+
+###
+
+POST http://localhost:4000/users
 Content-Type: application/json
 
 {
@@ -17,7 +35,7 @@ Content-Type: application/json
 
 ###
 
-POST http://localhost:3000/users/login
+POST http://localhost:4000/login
 Content-Type: application/json
 
 {

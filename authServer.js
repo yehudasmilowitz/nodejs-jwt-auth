@@ -7,32 +7,7 @@ const jwt = require("jsonwebtoken");
 
 app.use(express.json());
 
-const posts = [
-    {
-        userName: 'johndoe',
-        title: 'Post 1'
-    },
-    {
-        userName: 'Yehuda',
-        title: 'Post 2'
-    }
-];
-
 const users = [];
-
-
-app.get('/posts', authenticateToken, (req, res) => {
-    console.log(req.user.user.name);
-    res.json(posts.filter(post => post.userName === req.user.user.name));
-
-})
-
-
-app.get('login', (req, res) => {
-    // Authenticate user
-
-})
-
 
 app.get('/users', (req, res) => {
     // Get all users
@@ -54,15 +29,17 @@ app.post('/users', async (req, res) => {
 });
 
 
-app.post('/users/login', async (req, res) => {
+app.post('/login', async (req, res) => {
     const user = users.find(user => user.name === req.body.name);
     if (user == null) {
         return res.status(400).send('Cannot find user');
     }
     try {
         if (await bcrypt.compare(req.body.password, user.password)) {
-            const accessToken = jwt.sign({ user }, process.env.ACCESS_TOKEN_SECRET);
-            res.json({ accessToken: accessToken });
+            const accessToken = generateAccessToken(user);
+            const refreshToken = jwt.sign(user, process.env.REFRESH_TOKEN_SECRET);
+            refreshTokens.push(refreshToken);
+            res.json({ accessToken, refreshToken });
         }
         else {
             res.send('Not Allowed');
@@ -74,15 +51,29 @@ app.post('/users/login', async (req, res) => {
 });
 
 
-function authenticateToken(req, res, next) {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-    if (token == null) return res.sendStatus(401);
-    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
+//Should be stored in a database or something like redis cache
+let refreshTokens = [];
+
+app.get('/token', (req, res) => {
+    const refreshToken = req.body.token;
+    if (!refreshToken) return res.sendStatus(401);
+    if(!refreshTokens.includes(refreshToken)) return res.sendStatus(403);
+
+    jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, user) => {
         if (err) return res.sendStatus(403);
-        req.user = user;
-        next();
+        const accessToken = generateAccessToken({ name: user.name });
+        res.json({ accessToken });
     });
+    
+})
+
+app.delete('/logout', (req, res) => {
+    refreshTokens = refreshTokens.filter(token => token !== req.body.token);
+    res.sendStatus(204);
+})
+
+function generateAccessToken(user) {
+    return jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '60s' });
 }
 
 
